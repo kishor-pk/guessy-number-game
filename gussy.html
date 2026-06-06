@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Guessy — Number Guessing Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f0e17;
+  --surface: #1a1828;
+  --surface2: #232136;
+  --accent: #ff6b6b;
+  --accent2: #ffd93d;
+  --accent3: #6bcb77;
+  --accent4: #4d96ff;
+  --text: #fffffe;
+  --muted: #a7a9be;
+  --easy: #6bcb77;
+  --medium: #ffd93d;
+  --hard: #ff6b6b;
+  --impossible: #c77dff;
+  --radius: 16px;
+  --radius-lg: 24px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+.bg-blobs {
+  position: fixed; top:0; left:0; right:0; bottom:0; pointer-events: none; z-index: 0; overflow: hidden;
+}
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.18;
+  animation: blobFloat 12s ease-in-out infinite;
+}
+.blob1 { width: 500px; height: 500px; background: #ff6b6b; top: -150px; left: -100px; animation-delay: 0s; }
+.blob2 { width: 400px; height: 400px; background: #4d96ff; bottom: -100px; right: -100px; animation-delay: -4s; }
+.blob3 { width: 300px; height: 300px; background: #ffd93d; top: 40%; left: 60%; animation-delay: -8s; }
+
+@keyframes blobFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -30px) scale(1.05); }
+  66% { transform: translate(-20px, 20px) scale(0.95); }
+}
+
+.particles { position: fixed; top:0; left:0; right:0; bottom:0; pointer-events: none; z-index: 0; }
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: particleFloat linear infinite;
+  opacity: 0;
+}
+@keyframes particleFloat {
+  0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.3; }
+  100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
+}
+
+#app {
+  position: relative; z-index: 1;
+  width: 100%; max-width: 480px;
+  padding: 2rem 1.25rem;
+  margin: 0 auto;
+}
+
+.screen { display: none; }
+.screen.active { display: block; animation: screenIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.logo { text-align: center; margin-bottom: 0.5rem; }
+.logo-title {
+  font-family: 'Baloo 2', cursive;
+  font-size: 52px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -1px;
+  line-height: 1;
+  animation: logoWobble 3s ease-in-out infinite;
+}
+@keyframes logoWobble {
+  0%, 100% { transform: rotate(-1deg); }
+  50% { transform: rotate(1deg); }
+}
+.logo-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 1.25rem 0;
+}
+.stat-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 0.85rem 0.5rem;
+  text-align: center;
+  border: 1.5px solid rgba(255,255,255,0.06);
+  transition: transform 0.2s;
+}
+.stat-card:hover { transform: translateY(-2px); }
+.stat-num { font-family: 'Baloo 2', cursive; font-size: 26px; font-weight: 700; }
+.stat-label { font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-top: 1px; }
+
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 1.25rem;
+}
+.level-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 0.85rem 0.4rem;
+  text-align: center;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.2s, border-color 0.2s, background 0.2s;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.level-card::before {
+  content: '';
+  position: absolute;
+  top:0; left:0; right:0; bottom:0;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.level-card.easy-card::before       { background: radial-gradient(circle at 50% 0%, rgba(107,203,119,0.25), transparent 70%); }
+.level-card.medium-card::before     { background: radial-gradient(circle at 50% 0%, rgba(255,217,61,0.25), transparent 70%); }
+.level-card.hard-card::before       { background: radial-gradient(circle at 50% 0%, rgba(255,107,107,0.25), transparent 70%); }
+.level-card.impossible-card::before { background: radial-gradient(circle at 50% 0%, rgba(199,125,255,0.3), transparent 70%); }
+.level-card:not(.locked):hover::before,
+.level-card.selected::before { opacity: 1; }
+.level-card:not(.locked):hover { transform: translateY(-3px); }
+.level-card.selected.easy-card       { border-color: var(--easy); }
+.level-card.selected.medium-card     { border-color: var(--medium); }
+.level-card.selected.hard-card       { border-color: var(--hard); }
+.level-card.selected.impossible-card { border-color: var(--impossible); box-shadow: 0 0 18px rgba(199,125,255,0.35); }
+.level-card.locked { opacity: 0.45; cursor: not-allowed; }
+.level-icon { font-size: 22px; margin-bottom: 3px; }
+.level-name { font-size: 12px; font-weight: 800; }
+.level-range { font-size: 10px; color: var(--muted); margin-top: 2px; font-weight: 600; }
+.lock-icon { font-size: 12px; margin-top: 3px; }
+
+.impossible-card:not(.locked) .level-icon {
+  animation: glitchFloat 2s ease-in-out infinite;
+}
+@keyframes glitchFloat {
+  0%, 100% { transform: translateY(0) scale(1); filter: hue-rotate(0deg); }
+  25% { transform: translateY(-4px) scale(1.1); filter: hue-rotate(90deg); }
+  50% { transform: translateY(0) scale(0.95); filter: hue-rotate(180deg); }
+  75% { transform: translateY(-2px) scale(1.05); filter: hue-rotate(270deg); }
+}
+
+.hint-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 0.75rem;
+}
+.hint-card {
+  background: var(--surface2);
+  border-radius: 12px;
+  padding: 0.6rem 0.4rem;
+  text-align: center;
+  border: 1.5px solid rgba(199,125,255,0.15);
+  animation: hintReveal 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.hint-card:nth-child(2) { animation-delay: 0.08s; }
+.hint-card:nth-child(3) { animation-delay: 0.16s; }
+@keyframes hintReveal {
+  from { transform: scale(0.7) translateY(10px); opacity: 0; }
+  to   { transform: scale(1) translateY(0); opacity: 1; }
+}
+.hint-card-icon { font-size: 18px; margin-bottom: 3px; }
+.hint-card-label { font-size: 10px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.hint-card-value { font-family: 'Baloo 2', cursive; font-size: 14px; font-weight: 700; color: var(--impossible); margin-top: 1px; }
+
+.badge-impossible { background: rgba(199,125,255,0.15); color: var(--impossible); border: 1.5px solid rgba(199,125,255,0.35); }
+
+.mystery-emoji.impossible-mode {
+  animation: skullGlitch 1.2s ease-in-out infinite;
+}
+@keyframes skullGlitch {
+  0%, 90%, 100% { transform: translateY(0) rotate(-5deg); filter: none; }
+  92% { transform: translateY(-12px) rotate(8deg) skewX(5deg); filter: hue-rotate(120deg) brightness(1.3); }
+  94% { transform: translateY(-8px) rotate(-8deg) skewX(-5deg); filter: hue-rotate(240deg); }
+  96% { transform: translateY(-12px) rotate(5deg); filter: hue-rotate(360deg) brightness(1.5); }
+  98% { transform: translateY(-4px) rotate(-3deg); filter: none; }
+}
+
+.play-btn {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+  color: #fff;
+  font-family: 'Baloo 2', cursive;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 20px rgba(255,107,107,0.4);
+  position: relative;
+  overflow: hidden;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.play-btn::after { content: ''; position: absolute; top:0; left:0; right:0; bottom:0; background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent); }
+.play-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255,107,107,0.5); }
+.play-btn:active { transform: scale(0.98); }
+
+.game-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.back-btn {
+  background: var(--surface);
+  border: 1.5px solid rgba(255,255,255,0.08);
+  color: var(--muted);
+  border-radius: 10px;
+  padding: 7px 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Nunito', sans-serif;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.back-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+.level-badge {
+  font-size: 13px;
+  font-weight: 800;
+  padding: 6px 14px;
+  border-radius: 99px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.badge-easy   { background: rgba(107,203,119,0.15); color: var(--easy);   border: 1.5px solid rgba(107,203,119,0.3); }
+.badge-medium { background: rgba(255,217,61,0.15);  color: var(--medium); border: 1.5px solid rgba(255,217,61,0.3); }
+.badge-hard   { background: rgba(255,107,107,0.15); color: var(--hard);   border: 1.5px solid rgba(255,107,107,0.3); }
+
+.mystery-box {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  text-align: center;
+  border: 1.5px solid rgba(255,255,255,0.06);
+  position: relative;
+  overflow: hidden;
+}
+.mystery-label { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem; }
+.mystery-range { font-family: 'Baloo 2', cursive; font-size: 28px; font-weight: 700; margin-bottom: 0.5rem; }
+.mystery-emoji {
+  font-size: 44px;
+  display: inline-block;
+  animation: questionBounce 1.5s ease-in-out infinite;
+  cursor: default;
+}
+@keyframes questionBounce {
+  0%, 100% { transform: translateY(0) rotate(-5deg); }
+  50% { transform: translateY(-10px) rotate(5deg); }
+}
+
+.attempts-section { margin-bottom: 1rem; }
+.attempts-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.attempts-text { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+.attempts-count { font-size: 13px; font-weight: 800; }
+.hearts-row { display: flex; gap: 5px; flex-wrap: wrap; }
+.heart {
+  font-size: 22px;
+  display: inline-block;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.heart.lost { filter: grayscale(1); opacity: 0.3; transform: scale(0.8); }
+.heart.popping { animation: heartPop 0.5s ease; }
+@keyframes heartPop {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.5) rotate(-20deg); }
+  60% { transform: scale(0.7); }
+  100% { transform: scale(0.8); }
+}
+
+.input-area {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  border: 1.5px solid rgba(255,255,255,0.06);
+}
+.guess-input-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 0.75rem;
+  width: 100%;
+}
+.guess-input {
+  width: 100%;
+  background: var(--surface2);
+  border: 2px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: var(--text);
+  font-family: 'Baloo 2', cursive;
+  font-size: 24px;
+  font-weight: 700;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  text-align: center;
+  letter-spacing: 2px;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+  box-sizing: border-box;
+}
+.guess-input::-webkit-outer-spin-button,
+.guess-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.guess-input::placeholder { color: rgba(255,255,255,0.2); letter-spacing: 0; }
+.guess-input:focus { border-color: var(--accent4); box-shadow: 0 0 0 3px rgba(77,150,255,0.15); }
+.guess-input:disabled { opacity: 0.5; }
+
+.submit-btn {
+  width: 100%;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #4d96ff, #6c63ff);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-family: 'Baloo 2', cursive;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 15px rgba(77,150,255,0.35);
+  white-space: nowrap;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.submit-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(77,150,255,0.45); }
+.submit-btn:active:not(:disabled) { transform: scale(0.97); }
+.submit-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+.feedback-box {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  padding: 10px 16px;
+  transition: all 0.3s;
+}
+.feedback-box.visible { background: var(--surface2); }
+.feedback-arrow { font-size: 22px; animation: arrowBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes arrowBounce {
+  from { transform: scale(0) rotate(-90deg); }
+  to   { transform: scale(1) rotate(0deg); }
+}
+.feedback-text { font-size: 16px; font-weight: 800; }
+.feedback-hint { font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 2px; }
+
+.history-section {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 1rem;
+  border: 1.5px solid rgba(255,255,255,0.06);
+}
+.history-label { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.history-pills { display: flex; flex-wrap: wrap; gap: 6px; min-height: 32px; }
+.pill {
+  font-family: 'Baloo 2', cursive;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 99px;
+  animation: pillPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes pillPop {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.pill-high { background: rgba(255,107,107,0.15); color: #ff6b6b; border: 1.5px solid rgba(255,107,107,0.3); }
+.pill-low  { background: rgba(77,150,255,0.15); color: #4d96ff; border: 1.5px solid rgba(77,150,255,0.3); }
+.pill-win  { background: rgba(107,203,119,0.2); color: #6bcb77; border: 1.5px solid rgba(107,203,119,0.4); }
+
+/* Result */
+.result-wrap { text-align: center; padding: 1rem 0; }
+.result-burst {
+  font-size: 72px;
+  margin-bottom: 0.5rem;
+  display: inline-block;
+  animation: resultPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes resultPop {
+  from { transform: scale(0) rotate(-20deg); }
+  to   { transform: scale(1) rotate(0deg); }
+}
+.result-title { font-family: 'Baloo 2', cursive; font-size: 40px; font-weight: 800; line-height: 1; margin-bottom: 0.4rem; }
+.result-number { font-size: 15px; color: var(--muted); margin-bottom: 0.25rem; font-weight: 600; }
+
+/* Fail comment */
+.fail-comment {
+  font-size: 19px;
+  font-weight: 800;
+  color: #ff6b6b;
+  background: rgba(255,107,107,0.1);
+  border: 1.5px solid rgba(255,107,107,0.25);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin: 0.5rem 0 0.75rem;
+  display: none;
+  line-height: 1.4;
+  animation: failCommentPop 0.5s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes failCommentPop {
+  from { transform: scale(0.8) rotate(-2deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.result-tries { font-family: 'Baloo 2', cursive; font-size: 52px; font-weight: 700; margin: 0.2rem 0; animation: countUp 0.4s ease-out; }
+@keyframes countUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.result-tries-label { font-size: 13px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.25rem; }
+.next-level-pill {
+  display: inline-block;
+  padding: 8px 20px;
+  border-radius: 99px;
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 1.5rem;
+  animation: shimmer 2s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0%, 100% { box-shadow: 0 0 10px rgba(255,217,61,0.3); }
+  50% { box-shadow: 0 0 25px rgba(255,217,61,0.6); }
+}
+.result-actions { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+.play-again-btn {
+  padding: 14px;
+  border: none;
+  border-radius: var(--radius);
+  font-family: 'Baloo 2', cursive;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.play-again-btn:hover { transform: translateY(-2px); }
+.play-again-btn:active { transform: scale(0.97); }
+.menu-btn {
+  padding: 14px 18px;
+  border: 2px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  font-family: 'Nunito', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.menu-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.25); }
+
+#confetti-canvas { position: fixed; top:0; left:0; right:0; bottom:0; pointer-events: none; z-index: 999; }
+
+.shake { animation: wrongShake 0.4s ease; }
+@keyframes wrongShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-blobs">
+  <div class="blob blob1"></div>
+  <div class="blob blob2"></div>
+  <div class="blob blob3"></div>
+</div>
+<div class="particles" id="particles"></div>
+<canvas id="confetti-canvas"></canvas>
+
+<div id="app">
+
+  <!-- MENU -->
+  <div id="screen-menu" class="screen active">
+    <div class="logo">
+      <div class="logo-title">Guessy!</div>
+      <div class="logo-sub">Number Guessing Game</div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-num" id="stat-wins">0</div><div class="stat-label">Wins</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-streak">0</div><div class="stat-label">Streak</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-best">—</div><div class="stat-label">Best</div></div>
+    </div>
+    <div class="level-grid">
+      <div class="level-card easy-card selected" id="card-easy" onclick="selectLevel('easy')">
+        <div class="level-icon">🌱</div>
+        <div class="level-name" style="color:var(--easy)">Easy</div>
+        <div class="level-range">1 – 100</div>
+      </div>
+      <div class="level-card medium-card locked" id="card-medium" onclick="selectLevel('medium')">
+        <div class="level-icon">🔥</div>
+        <div class="level-name" style="color:var(--medium)">Medium</div>
+        <div class="level-range">1 – 500</div>
+        <div class="lock-icon" id="lock-medium">🔒</div>
+      </div>
+      <div class="level-card hard-card locked" id="card-hard" onclick="selectLevel('hard')">
+        <div class="level-icon">💀</div>
+        <div class="level-name" style="color:var(--hard)">Hard</div>
+        <div class="level-range">1 – 1000</div>
+        <div class="lock-icon" id="lock-hard">🔒</div>
+      </div>
+      <div class="level-card impossible-card locked" id="card-impossible" onclick="selectLevel('impossible')">
+        <div class="level-icon">👾</div>
+        <div class="level-name" style="color:var(--impossible)">Impossible</div>
+        <div class="level-range">1 – 10000</div>
+        <div class="lock-icon" id="lock-impossible">🔒</div>
+      </div>
+    </div>
+    <button class="play-btn" onclick="startGame()">▶ Play Now!</button>
+  </div>
+
+  <!-- GAME -->
+  <div id="screen-game" class="screen">
+    <div class="game-header">
+      <button class="back-btn" onclick="goMenu()">← Menu</button>
+      <div class="level-badge" id="level-badge">Easy</div>
+    </div>
+    <div class="mystery-box">
+      <div class="mystery-label">Find the secret number</div>
+      <div class="mystery-range" id="game-range">between 1 and 100</div>
+      <div class="mystery-emoji" id="mystery-emoji">🎲</div>
+    </div>
+    <div class="attempts-section">
+      <div class="attempts-header">
+        <span class="attempts-text">Lives</span>
+        <span class="attempts-count" id="attempts-count">7 left</span>
+      </div>
+      <div class="hearts-row" id="hearts-row"></div>
+    </div>
+    <div class="input-area">
+      <div class="guess-input-wrap">
+        <input class="guess-input" type="number" inputmode="numeric" id="guess-input" placeholder="???" min="1" />
+        <button class="submit-btn" id="submit-btn" onclick="checkGuess()">Go! →</button>
+      </div>
+      <div class="feedback-box" id="feedback-box">
+        <div id="feedback-content"></div>
+      </div>
+    </div>
+    <div class="history-section">
+      <div class="history-label">Your guesses</div>
+      <div class="history-pills" id="history-pills"></div>
+    </div>
+
+    <!-- Impossible mode hint panel -->
+    <div id="impossible-hints" style="display:none; margin-top:0.75rem;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">🔮 Special Hints</div>
+      <div class="hint-cards">
+        <div class="hint-card">
+          <div class="hint-card-icon">🔢</div>
+          <div class="hint-card-label">Odd / Even</div>
+          <div class="hint-card-value" id="hint-oddeven">—</div>
+        </div>
+        <div class="hint-card">
+          <div class="hint-card-icon">➗</div>
+          <div class="hint-card-label">Divisible by</div>
+          <div class="hint-card-value" id="hint-divisible">—</div>
+        </div>
+        <div class="hint-card">
+          <div class="hint-card-icon">🔟</div>
+          <div class="hint-card-label">Last digit</div>
+          <div class="hint-card-value" id="hint-lastdigit">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="screen-result" class="screen">
+    <div class="result-wrap">
+      <div class="result-burst" id="result-burst">🎉</div>
+      <div class="result-title" id="result-title">Nailed it!</div>
+      <div class="fail-comment" id="fail-comment"></div>
+      <div class="result-number" id="result-number">The number was 42</div>
+      <div class="result-tries" id="result-tries">4</div>
+      <div class="result-tries-label" id="result-tries-label">guesses used</div>
+      <div id="next-level-wrap"></div>
+      <div class="result-actions">
+        <button class="play-again-btn" id="play-again-btn" onclick="startGame()">Play Again ↗</button>
+        <button class="menu-btn" onclick="goMenu()">Menu</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const LEVELS = {
+  easy:       { range: 100,   maxAttempts: 7,  label: 'Easy',       emoji: '🌱', color: '#6bcb77' },
+  medium:     { range: 500,   maxAttempts: 9,  label: 'Medium',     emoji: '🔥', color: '#ffd93d' },
+  hard:       { range: 1000,  maxAttempts: 10, label: 'Hard',       emoji: '💀', color: '#ff6b6b' },
+  impossible: { range: 10000, maxAttempts: 10, label: 'Impossible', emoji: '👾', color: '#c77dff' }
+};
+
+const FAIL_COMMENTS = {
+  easy: [
+    "😂 Vallathum nadakko?",
+    "🙄 Ichiri budhi ndayirunnenkil mandha budhi nnenkilum vilikkarnnu.",
+    "💀 Vere valla panikkyum podey!!",
+    "🤦 Ninakkokke valla kazhivum ndodey.",
+    "😭 Korach kanji edukkatey manikkya.",
+    "🐔 Ithilum gathikettaven vere arundu dhaivame.",
+    "😬 Patulenkil kalanjitt podey.",
+    "🥴 Ithilum valuth entho varan irunnatha ingane poyi nnu karithiya mathi.",
+    "🎪 Valla vazhayum vecha mathiyarnnu.",
+    "📉 Potten nnu paranja loka pottan.",
+  ],
+  medium: [
+    "😅 Okay medium thaan, pakshe ingane aayo?",
+    "🤷 500 numbers, 9 tries, oru luck um illayirunno?",
+    "😤 Number angane irunnu, ningal varatheyirunnu.",
+    "🧠 Higher/Lower hints kandittu guess cheyyal patumayirunno?",
+    "😆 Plot twist: number ninne muzhuvan neravum sradhikkunnundayirunnu.",
+    "🫠 Medium levelil oru victim koodi.",
+    "🙃 Vazhiyundallo, ippolum ithil thottu.",
+    "🎰 Casino try cheythu nokku. Seriously.",
+    "🥲 Adutha thavaneyum thazheh poyi.",
+    "🤡 Number vilichhu. Ningale kurichhu naanam thonnunnunnu ennnu paranju.",
+  ],
+  hard: [
+    "😈 Hard is HARD. Pakshe ingane aayo?",
+    "💪 1000 numbers, seri, tough thanne. korach mathrame sympathy tharu.",
+    "🔥 Vannu. Kandu. Thakarnnu.",
+    "🧊 Ice cold. Number karuna kaanicchilla.",
+    "😎 Pro tip: kooda ulla numbers guess cheyyuka?",
+    "👻 Number kayattathinu mumbe disappear aayi. Spooky.",
+    "🎯 10 tries, 1000 numbers. Math ningalude side aayirunnil.",
+    "🏳️ Chila battles thodangum munpe thanne thotu. Ithum athu thanne.",
+    "💔 Number kandupidikkappedanam ennu aagrahicchirunnu. Ningal thannilla.",
+    "🫡 Hard try cheythathinu respect. Thotathinnu? Kurach kuravanu.",
+  ],
+  impossible: [
+    "🤯 IMPOSSIBLE ennu Peru thanne pariyunnu. Kandilla?",
+    "👾 Number chirichi. Njangal ketthu.",
+    "🌀 10 tries. 10,000 numbers. Enthu karyam annu prateekshichathu?",
+    "🧿 Hints undaayittu kooda kazhinjillayirunno? Kidilam.",
+    "😱 Scientists ith kandu athishayam kondu papers ezhuthukayanu.",
+    "🕳️ Number black hole il veezhunnu. Athu ningalude excuse aanu.",
+    "🫠 Oru guess muthal thanne thothupoyi. Vedanam thanne.",
+    "👁️ Impossible level ningalude ullilekku nokki. Oru nisvaasamulla.",
+    "🤖 Pure binary search cheyyunna oru robot kooda thokkum. Ningalkku jayikkan kazhiyumayirunnil.",
+    "🏆 Participation trophy? Stock theernnhu. Vere thavana try cheyyuka.",
+  ],
+};
+
+function getFailComment(level) {
+  const comments = FAIL_COMMENTS[level];
+  return comments[Math.floor(Math.random() * comments.length)];
+}
+
+const MYSTERY_EMOJIS = ['🎲','🎭','🎪','🔮','🎯','🧩','🎰','🪄','🃏','🎱'];
+const IMPOSSIBLE_EMOJIS = ['👾','🌀','💀','🕳️','🧿','⚡','🫠','🤯'];
+const unlocked = { easy: true, medium: false, hard: false, impossible: false };
+let selectedLevel = 'easy';
+let currentLevel, number, attemptsLeft, maxAttempts, guesses;
+let stats = { wins: 0, streak: 0, best: null };
+let emojiInterval;
+
+/* Particles */
+(function() {
+  const wrap = document.getElementById('particles');
+  const colors = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#c77dff'];
+  for (let i = 0; i < 20; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random() * 6 + 3;
+    p.style.cssText = `width:${size}px;height:${size}px;left:${Math.random()*100}%;background:${colors[Math.floor(Math.random()*colors.length)]};animation-duration:${Math.random()*15+10}s;animation-delay:${Math.random()*15}s;`;
+    wrap.appendChild(p);
+  }
+})();
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goMenu() {
+  clearInterval(emojiInterval);
+  syncLevelHighlight();
+  show('screen-menu');
+}
+
+function selectLevel(lvl) {
+  if (!unlocked[lvl]) return;
+  selectedLevel = lvl;
+  syncLevelHighlight();
+}
+
+function syncLevelHighlight() {
+  ['easy','medium','hard','impossible'].forEach(l => {
+    const card = document.getElementById('card-' + l);
+    card.classList.remove('selected');
+    if (l === selectedLevel && unlocked[l]) card.classList.add('selected');
+  });
+}
+
+function startGame() {
+  clearInterval(emojiInterval);
+  currentLevel = selectedLevel;
+  const cfg = LEVELS[currentLevel];
+  number       = Math.floor(Math.random() * cfg.range) + 1;
+  attemptsLeft = cfg.maxAttempts;
+  maxAttempts  = cfg.maxAttempts;
+  guesses      = [];
+
+  const badge = document.getElementById('level-badge');
+  badge.textContent = cfg.label;
+  badge.className   = 'level-badge badge-' + currentLevel;
+
+  document.getElementById('game-range').textContent = `between 1 and ${cfg.range}`;
+
+  const inp = document.getElementById('guess-input');
+  inp.max = cfg.range; inp.value = ''; inp.disabled = false;
+  document.getElementById('submit-btn').disabled = false;
+
+  const fb = document.getElementById('feedback-box');
+  fb.classList.remove('visible');
+  document.getElementById('feedback-content').innerHTML = '';
+  document.getElementById('history-pills').innerHTML = '';
+
+  renderHearts();
+
+  const emEl = document.getElementById('mystery-emoji');
+  emEl.textContent = cfg.emoji;
+  const emojiPool = currentLevel === 'impossible' ? IMPOSSIBLE_EMOJIS : MYSTERY_EMOJIS;
+  if (currentLevel === 'impossible') {
+    emEl.classList.add('impossible-mode');
+  } else {
+    emEl.classList.remove('impossible-mode');
+  }
+  emojiInterval = setInterval(() => {
+    emEl.textContent = emojiPool[Math.floor(Math.random() * emojiPool.length)];
+  }, 1800);
+
+  const hintsPanel = document.getElementById('impossible-hints');
+  if (currentLevel === 'impossible') {
+    hintsPanel.style.display = 'block';
+    document.getElementById('hint-oddeven').textContent   = number % 2 === 0 ? 'EVEN' : 'ODD';
+    document.getElementById('hint-lastdigit').textContent = number % 10;
+    const divHints = [3,4,5,6,7,8,9].filter(d => number % d === 0);
+    document.getElementById('hint-divisible').textContent =
+      divHints.length ? divHints.join(', ') : 'None of 3–9';
+  } else {
+    hintsPanel.style.display = 'none';
+  }
+
+  show('screen-game');
+  setTimeout(() => inp.focus(), 150);
+}
+
+function renderHearts() {
+  const row = document.getElementById('hearts-row');
+  row.innerHTML = '';
+  for (let i = 0; i < maxAttempts; i++) {
+    const h = document.createElement('span');
+    h.className = 'heart' + (i >= attemptsLeft ? ' lost' : '');
+    h.textContent = '❤️';
+    h.id = 'heart-' + i;
+    row.appendChild(h);
+  }
+  document.getElementById('attempts-count').textContent =
+    attemptsLeft === 1 ? 'Last life! 😰' : `${attemptsLeft} left`;
+}
+
+function loseHeart() {
+  const idx = attemptsLeft;
+  const h = document.getElementById('heart-' + idx);
+  if (h) {
+    h.classList.add('popping');
+    setTimeout(() => { h.classList.remove('popping'); h.classList.add('lost'); }, 500);
+  }
+  document.getElementById('attempts-count').textContent =
+    attemptsLeft === 1 ? 'Last life! 😰' : attemptsLeft === 0 ? 'No lives left!' : `${attemptsLeft} left`;
+}
+
+function checkGuess() {
+  const inp   = document.getElementById('guess-input');
+  const guess = parseInt(inp.value, 10);
+  const cfg   = LEVELS[currentLevel];
+
+  if (!guess || guess < 1 || guess > cfg.range) {
+    shakeEl(inp);
+    showFeedback('⚠️', `Enter 1 – ${cfg.range}`, '#ffd93d', '');
+    return;
+  }
+  if (guesses.includes(guess)) {
+    shakeEl(inp);
+    showFeedback('🙄', 'Already tried that!', '#a7a9be', '');
+    return;
+  }
+
+  attemptsLeft--;
+  guesses.push(guess);
+
+  const pill = document.createElement('div');
+  pill.textContent = guess;
+  if (guess === number) {
+    pill.className = 'pill pill-win';
+  } else {
+    pill.className = 'pill ' + (guess > number ? 'pill-high' : 'pill-low');
+  }
+  document.getElementById('history-pills').appendChild(pill);
+
+  if (guess === number) {
+    clearInterval(emojiInterval);
+    document.getElementById('mystery-emoji').textContent = '🎯';
+    inp.disabled = true;
+    document.getElementById('submit-btn').disabled = true;
+    unlockNext();
+    updateStats(true);
+    launchConfetti();
+    setTimeout(() => showResult(true), 700);
+    return;
+  }
+
+  loseHeart();
+
+  if (attemptsLeft <= 0) {
+    clearInterval(emojiInterval);
+    document.getElementById('mystery-emoji').textContent = '💔';
+    inp.disabled = true;
+    document.getElementById('submit-btn').disabled = true;
+    updateStats(false);
+    setTimeout(() => showResult(false), 700);
+    return;
+  }
+
+  const dir    = guess < number ? '⬆️' : '⬇️';
+  const dirTxt = guess < number ? 'Go Higher!' : 'Go Lower!';
+  const diff   = Math.abs(guess - number);
+  const range  = cfg.range;
+  let hint;
+  if      (diff <= range * 0.01) hint = 'ON FIRE!! 🔥';
+  else if (diff <= range * 0.03) hint = 'Extremely close! 🎯';
+  else if (diff <= range * 0.08) hint = 'So close!';
+  else if (diff <= range * 0.15) hint = 'Getting warm ♨️';
+  else if (diff <= range * 0.30) hint = 'Lukewarm…';
+  else                            hint = 'Way off! 🧊';
+
+  if (currentLevel === 'impossible') {
+    const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+    const shared = gcd(guess, number);
+    if (shared > 1 && shared !== guess && shared !== number) {
+      hint += ` (share factor: ${shared})`;
+    }
+  }
+
+  const color = guess < number ? '#4d96ff' : '#ff6b6b';
+  showFeedback(dir, dirTxt, color, hint);
+  inp.value = '';
+  inp.focus();
+}
+
+function showFeedback(icon, text, color, hint) {
+  const box = document.getElementById('feedback-box');
+  box.classList.add('visible');
+  document.getElementById('feedback-content').innerHTML = `
+    <div style="text-align:center">
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px">
+        <span class="feedback-arrow">${icon}</span>
+        <span class="feedback-text" style="color:${color}">${text}</span>
+      </div>
+      ${hint ? `<div class="feedback-hint">${hint}</div>` : ''}
+    </div>`;
+}
+
+function shakeEl(el) {
+  el.classList.remove('shake');
+  void el.offsetWidth;
+  el.classList.add('shake');
+  setTimeout(() => el.classList.remove('shake'), 400);
+}
+
+function unlockNext() {
+  if (currentLevel === 'easy') {
+    unlocked.medium = true;
+    document.getElementById('card-medium').classList.remove('locked');
+    document.getElementById('lock-medium').style.display = 'none';
+    selectedLevel = 'medium';
+  } else if (currentLevel === 'medium') {
+    unlocked.hard = true;
+    document.getElementById('card-hard').classList.remove('locked');
+    document.getElementById('lock-hard').style.display = 'none';
+    selectedLevel = 'hard';
+  } else if (currentLevel === 'hard') {
+    unlocked.impossible = true;
+    document.getElementById('card-impossible').classList.remove('locked');
+    document.getElementById('lock-impossible').style.display = 'none';
+    selectedLevel = 'impossible';
+  }
+}
+
+function updateStats(won) {
+  if (won) {
+    stats.wins++;
+    stats.streak++;
+    const used = maxAttempts - attemptsLeft;
+    if (stats.best === null || used < stats.best) stats.best = used;
+  } else {
+    stats.streak = 0;
+  }
+  document.getElementById('stat-wins').textContent   = stats.wins;
+  document.getElementById('stat-streak').textContent = stats.streak;
+  document.getElementById('stat-best').textContent   = stats.best !== null ? stats.best : '—';
+}
+
+function showResult(won) {
+  const used = maxAttempts - attemptsLeft;
+  const nextMap = { easy: 'Medium 🔥', medium: 'Hard 💀', hard: 'Impossible 👾' };
+  const nextLabel = nextMap[currentLevel];
+
+  document.getElementById('result-burst').textContent = won ? '🎉' : '😔';
+  document.getElementById('result-title').textContent = won ? 'Nailed it!' : 'Game Over!';
+  document.getElementById('result-number').textContent = `The number was ${number}`;
+
+  // Show / hide fail comment
+  const failEl = document.getElementById('fail-comment');
+  if (!won) {
+    failEl.textContent = getFailComment(currentLevel);
+    failEl.style.display = 'block';
+  } else {
+    failEl.style.display = 'none';
+  }
+
+  if (won) {
+    document.getElementById('result-tries').textContent      = used;
+    document.getElementById('result-tries-label').textContent = used === 1 ? 'guess — incredible!!' : 'guesses used';
+    document.getElementById('result-tries').style.color      = used <= 3 ? '#6bcb77' : used <= 5 ? '#ffd93d' : '#ff6b6b';
+  } else {
+    document.getElementById('result-tries').textContent      = '💔';
+    document.getElementById('result-tries-label').textContent = 'out of lives';
+    document.getElementById('result-tries').style.color      = '#ff6b6b';
+  }
+
+  const nw = document.getElementById('next-level-wrap');
+  if (won && nextLabel) {
+    const isImpossible = currentLevel === 'hard';
+    const pillColor  = isImpossible ? 'rgba(199,125,255,0.15)' : 'rgba(255,217,61,0.15)';
+    const pillText   = isImpossible ? '#c77dff' : '#ffd93d';
+    const pillBorder = isImpossible ? 'rgba(199,125,255,0.35)' : 'rgba(255,217,61,0.35)';
+    nw.innerHTML = `<div class="next-level-pill" style="background:${pillColor};color:${pillText};border:1.5px solid ${pillBorder}">✨ Next up: ${nextLabel} unlocked!</div>`;
+  } else {
+    nw.innerHTML = '';
+  }
+
+  const btn = document.getElementById('play-again-btn');
+  if (won && nextLabel) {
+    const isImpossibleNext = currentLevel === 'hard';
+    btn.style.background = isImpossibleNext
+      ? 'linear-gradient(135deg, #c77dff, #7b2fff)'
+      : 'linear-gradient(135deg, #ffd93d, #ff9a3c)';
+    btn.style.color     = '#fff';
+    btn.style.boxShadow = isImpossibleNext
+      ? '0 4px 20px rgba(199,125,255,0.45)'
+      : '0 4px 20px rgba(255,217,61,0.4)';
+    btn.textContent     = `Play ${nextLabel.split(' ')[0]} ↗`;
+  } else {
+    btn.style.background = 'linear-gradient(135deg, #6bcb77, #4ecdc4)';
+    btn.style.color      = '#fff';
+    btn.style.boxShadow  = '0 4px 20px rgba(107,203,119,0.35)';
+    btn.textContent      = 'Play Again ↗';
+  }
+
+  show('screen-result');
+}
+
+function launchConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx    = canvas.getContext('2d');
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const pieces  = [];
+  const colors  = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#c77dff','#ff9a3c'];
+  for (let i = 0; i < 150; i++) {
+    pieces.push({
+      x:    Math.random() * canvas.width,
+      y:    -20 - Math.random() * 100,
+      w:    Math.random() * 10 + 6,
+      h:    Math.random() * 6 + 3,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rot:  Math.random() * 360,
+      vx:   (Math.random() - 0.5) * 7,
+      vy:   Math.random() * 3 + 2,
+      vrot: (Math.random() - 0.5) * 9,
+    });
+  }
+  let frame = 0;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.vy += 0.07; p.rot += p.vrot;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot * Math.PI / 180);
+      ctx.fillStyle   = p.color;
+      ctx.globalAlpha = Math.max(0, 1 - frame / 160);
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    });
+    frame++;
+    if (frame < 180) requestAnimationFrame(draw);
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  draw();
+}
+
+document.getElementById('guess-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkGuess();
+});
+</script>
+</body>
+</html>
